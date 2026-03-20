@@ -55,6 +55,28 @@
   @keyframes popIn { 0%{opacity:0;transform:scale(.6) rotate(-10deg)} 80%{transform:scale(1.06) rotate(2deg)} 100%{opacity:1;transform:scale(1) rotate(0deg)} }
   @keyframes floatCoin { 0%{opacity:1;transform:translateY(0) scale(1)} 100%{opacity:0;transform:translateY(-70px) scale(1.3)} }
   @keyframes barFill { from{width:0} to{width:var(--target-width)} }
+  @keyframes shake { 0%,100%{transform:translateX(0)} 20%{transform:translateX(-6px)} 40%{transform:translateX(6px)} 60%{transform:translateX(-4px)} 80%{transform:translateX(4px)} }
+  @keyframes streakPop { 0%{transform:scale(1)} 40%{transform:scale(1.4)} 100%{transform:scale(1)} }
+  .shake { animation: shake .4s ease-out; }
+  /* Notification dot on nav tabs */
+  .nav-btn { position:relative; }
+  .nav-dot {
+    position:absolute; top:4px; right:6px; width:7px; height:7px;
+    background:#ef4444; border-radius:50%; border:1.5px solid var(--slate-50);
+    display:none;
+  }
+  .nav-dot.show { display:block; }
+  /* Win streak */
+  #win-streak-banner {
+    position:fixed; top:70px; left:50%; transform:translateX(-50%);
+    background:linear-gradient(135deg,#f59e0b,#ef4444);
+    color:white; font-weight:900; font-size:13px;
+    padding:6px 18px; border-radius:20px; box-shadow:0 4px 16px rgba(0,0,0,.2);
+    z-index:200; pointer-events:none;
+    opacity:0; transition:opacity .2s;
+    white-space:nowrap;
+  }
+  #win-streak-banner.show { opacity:1; }
 
   /* ── Header ── */
   #header {
@@ -313,12 +335,6 @@
   .prestige-box .value { font-size:28px; font-weight:900; color:var(--amber-dark); }
   .prestige-box .hint { font-size:10px; color:var(--amber); margin-top:4px; }
 
-  /* ── Work tab ── */
-  .work-box { background:var(--white); border-radius:var(--radius-xl); border:2px solid var(--slate-100); padding:20px; text-align:center; box-shadow:var(--shadow); margin-bottom:12px; }
-  .work-icon { font-size:40px; margin-bottom:10px; }
-  .work-title { font-size:16px; font-weight:800; color:var(--slate-800); margin-bottom:4px; }
-  .work-sub { font-size:11px; color:var(--slate-500); margin-bottom:16px; }
-
   /* ── Research ── */
   .research-balance { background:var(--blue-light); border:1.5px solid rgba(59,130,246,.2); border-radius:var(--radius); padding:14px; margin-bottom:12px; }
   .research-balance .sub { font-size:10px; color:var(--blue); font-weight:800; text-transform:uppercase; letter-spacing:.5px; margin-bottom:4px; }
@@ -418,6 +434,10 @@
 </head>
 <body>
 <div id="app">
+  <div id="prestige-flash" style="position:fixed;inset:0;background:radial-gradient(circle,#fbbf24,#f59e0b,#d97706);z-index:9999;pointer-events:none;opacity:0;transition:opacity .15s;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:8px">
+    <div style="font-size:72px">🏆</div>
+    <div style="font-size:24px;font-weight:900;color:white;text-shadow:0 2px 8px rgba(0,0,0,.3)">PRESTIGE!</div>
+  </div>
   <!-- Background -->
   <div class="bg-blob bg-blob-1"></div>
   <div class="bg-blob bg-blob-2"></div>
@@ -475,7 +495,6 @@
 
         <div style="position:sticky;bottom:-12px;background:rgba(248,250,252,.92);backdrop-filter:blur(10px);padding:10px 0;margin:0 -12px;padding-left:12px;padding-right:12px;border-top:1px solid var(--slate-200);z-index:5">
           <button class="btn btn-primary btn-shimmer" id="scratch-btn">⚡ SCRATCH FOR <span id="scratch-cost">10</span></button>
-          <button class="btn btn-secondary" id="scavenge-btn" style="margin-top:8px;display:none">🔄 SCAVENGE FOR 1 COIN</button>
         </div>
       </div>
 
@@ -529,28 +548,6 @@
         <div style="font-weight:800;color:var(--slate-800);margin-bottom:6px">Advanced Analytics</div>
         <p style="font-size:11px;color:var(--slate-500);margin-bottom:10px">Unlock permanent boosts using research points.</p>
         <button class="btn btn-secondary" disabled style="cursor:not-allowed;opacity:.6">COMING SOON</button>
-      </div>
-    </div>
-
-    <!-- WORK TAB -->
-    <div id="tab-work" class="tab">
-      <div class="section-h"><span class="icon">📈</span> Job Center</div>
-      <div class="work-box">
-        <div class="work-icon">🔄</div>
-        <div class="work-title">Manual Labor</div>
-        <div class="work-sub">Tap repeatedly to earn coins when you're broke.</div>
-        <button class="btn btn-dark" id="work-btn">⚡ WORK (+2 COINS)</button>
-      </div>
-      <div class="card" style="background:#f0fdf4;border-color:rgba(16,185,129,.2)">
-        <div style="font-weight:800;color:#065f46;margin-bottom:4px">Auto-Scratcher Status</div>
-        <div style="font-size:11px;color:#047857;margin-bottom:10px">Your passive income machine.</div>
-        <div style="background:white;padding:10px;border-radius:10px;border:1.5px solid rgba(16,185,129,.15);display:flex;align-items:center;justify-content:space-between">
-          <div>
-            <div style="font-weight:800;font-size:13px;color:var(--slate-800)">Auto-Scratcher</div>
-            <div style="font-size:10px;color:var(--slate-500)">Level <span id="auto-level-work">0</span></div>
-          </div>
-          <div id="auto-status" style="font-weight:800;font-size:13px;color:var(--slate-400)">Inactive</div>
-        </div>
       </div>
     </div>
 
@@ -613,15 +610,16 @@
     <button class="nav-btn active" data-tab="cards"><div class="icon">⚡</div><div class="label">Cards</div></button>
     <button class="nav-btn" data-tab="upgrades"><div class="icon">🧪</div><div class="label">Upgrades</div></button>
     <button class="nav-btn" data-tab="research"><div class="icon">⚛️</div><div class="label">Research</div></button>
-    <button class="nav-btn" data-tab="missions"><div class="icon">🎯</div><div class="label">Missions</div></button>
-    <button class="nav-btn" data-tab="daily"><div class="icon">📅</div><div class="label">Daily</div></button>
+    <button class="nav-btn" data-tab="missions"><div class="icon">🎯</div><div class="label">Missions</div><div class="nav-dot" id="nav-dot-missions"></div></button>
+    <button class="nav-btn" data-tab="daily"><div class="icon">📅</div><div class="label">Daily</div><div class="nav-dot" id="nav-dot-daily"></div></button>
     <button class="nav-btn" data-tab="packs"><div class="icon">📦</div><div class="label">Packs</div></button>
-    <button class="nav-btn" data-tab="work"><div class="icon">🔄</div><div class="label">Work</div></button>
     <button class="nav-btn" data-tab="prestige"><div class="icon">🏆</div><div class="label">Prestige</div></button>
   </nav>
 
   <!-- Auto log -->
   <div id="auto-log"></div>
+  <!-- Win streak banner -->
+  <div id="win-streak-banner"></div>
 
   <!-- Modals -->
   <div id="settings-modal" class="modal-backdrop">
@@ -686,7 +684,7 @@
 // ═══════════════════════════════════════════════════════════════
 
 const TIERS = {
-  BASIC:    { name:'Basic Card',    cost:10,    unlockCost:0,      minWin:15,    maxWin:60,     color:'#e2e8f0', accent:'#64748b', winChance:.30 },
+  BASIC:    { name:'Basic Card',    cost:10,    unlockCost:0,      minWin:10,    maxWin:55,     color:'#e2e8f0', accent:'#64748b', winChance:.25 },
   SILVER:   { name:'Silver Card',   cost:75,    unlockCost:800,    minWin:120,   maxWin:450,    color:'#cbd5e1', accent:'#94a3b8', winChance:.32 },
   GOLD:     { name:'Gold Card',     cost:500,   unlockCost:6000,   minWin:800,   maxWin:3000,   color:'#fde047', accent:'#eab308', winChance:.35 },
   PLATINUM: { name:'Platinum Card', cost:3500,  unlockCost:45000,  minWin:6000,  maxWin:22000,  color:'#e5e7eb', accent:'#374151', winChance:.38 },
@@ -747,9 +745,85 @@ const DEFAULT_STATE = () => ({
   dailyLogin: { lastClaimed:0, streak:0 },
   lastOnlineTime: Date.now(),
   tutorialDone: false,
+  winStreak: 0,
 });
 
 let S = DEFAULT_STATE();
+
+// ── Web Audio sound effects ──────────────────────────────
+const AudioCtx = window.AudioContext || window.webkitAudioContext;
+let _actx = null;
+function getACtx() {
+  if (!_actx) _actx = new AudioCtx();
+  return _actx;
+}
+function playSound(type) {
+  try {
+    const ac = getACtx();
+    const g = ac.createGain();
+    g.connect(ac.destination);
+    if (type === 'scratch') {
+      // White-noise burst — papery scratch
+      const buf = ac.createBuffer(1, ac.sampleRate * 0.06, ac.sampleRate);
+      const d = buf.getChannelData(0);
+      for (let i=0;i<d.length;i++) d[i]=(Math.random()*2-1)*0.18;
+      const src = ac.createBufferSource();
+      const filt = ac.createBiquadFilter();
+      filt.type='bandpass'; filt.frequency.value=2800; filt.Q.value=0.6;
+      src.buffer=buf; src.connect(filt); filt.connect(g);
+      g.gain.setValueAtTime(0.6,ac.currentTime);
+      g.gain.exponentialRampToValueAtTime(0.001,ac.currentTime+0.06);
+      src.start(); src.stop(ac.currentTime+0.06);
+    } else if (type === 'coin') {
+      // Two-tone coin ding
+      [880,1320].forEach((freq,i) => {
+        const osc = ac.createOscillator();
+        const eg = ac.createGain();
+        osc.type='sine'; osc.frequency.value=freq;
+        osc.connect(eg); eg.connect(g);
+        const t = ac.currentTime + i*0.05;
+        eg.gain.setValueAtTime(0, t);
+        eg.gain.linearRampToValueAtTime(0.25, t+0.01);
+        eg.gain.exponentialRampToValueAtTime(0.001, t+0.35);
+        osc.start(t); osc.stop(t+0.35);
+      });
+    } else if (type === 'win') {
+      // Ascending arpeggio
+      [523,659,784,1047].forEach((freq,i) => {
+        const osc = ac.createOscillator();
+        const eg = ac.createGain();
+        osc.type='triangle'; osc.frequency.value=freq;
+        osc.connect(eg); eg.connect(g);
+        const t = ac.currentTime + i*0.09;
+        eg.gain.setValueAtTime(0,t);
+        eg.gain.linearRampToValueAtTime(0.2,t+0.02);
+        eg.gain.exponentialRampToValueAtTime(0.001,t+0.4);
+        osc.start(t); osc.stop(t+0.4);
+      });
+    } else if (type === 'lose') {
+      const osc = ac.createOscillator();
+      const eg = ac.createGain();
+      osc.type='sawtooth'; osc.frequency.setValueAtTime(300,ac.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(120,ac.currentTime+0.3);
+      osc.connect(eg); eg.connect(g);
+      eg.gain.setValueAtTime(0.15,ac.currentTime);
+      eg.gain.exponentialRampToValueAtTime(0.001,ac.currentTime+0.35);
+      osc.start(); osc.stop(ac.currentTime+0.35);
+    } else if (type === 'prestige') {
+      [261,329,392,523,659,784,1047].forEach((freq,i) => {
+        const osc = ac.createOscillator();
+        const eg = ac.createGain();
+        osc.type='sine'; osc.frequency.value=freq;
+        osc.connect(eg); eg.connect(g);
+        const t = ac.currentTime + i*0.07;
+        eg.gain.setValueAtTime(0,t);
+        eg.gain.linearRampToValueAtTime(0.18,t+0.02);
+        eg.gain.exponentialRampToValueAtTime(0.001,t+0.6);
+        osc.start(t); osc.stop(t+0.6);
+      });
+    }
+  } catch(e) {}
+}
 
 function saveState() {
   try { localStorage.setItem('pixelScratcher2', JSON.stringify(S)); } catch(e){}
@@ -1007,19 +1081,22 @@ function startScratch(tier, theme, isPackCard, packCardData) {
     fill.style.width = pct + '%';
     const mech = THEMES[theme].mechanic;
     if (mech === 'risk_reward') {
-      fill.style.background = pct > 80 ? '#ef4444' : pct > 60 ? '#f59e0b' : 'var(--emerald)';
-      if (pct >= 44 && !isRevealed) {
+      // Bar turns amber at 5/9 cells revealed, red at 8/9 (one cell away from burning)
+      fill.style.background = revealedCount >= 8 ? '#ef4444' : revealedCount >= 5 ? '#f59e0b' : 'var(--emerald)';
+      if (revealedCount >= 4 && !isRevealed) {
         document.getElementById('claim-btn-wrap').style.display = 'block';
       }
     }
 
-    // Complete as soon as all 9 cells are revealed
+    // All 9 cells scratched — on risk_reward this triggers the burn penalty
     if (revealedCount >= 9 && !isRevealed) {
-      completeCard(pct);
+      completeCard(true);
     }
   }
 
-  function completeCard(pct) {
+  // burned=true only when player scratches ALL cells on a risk_reward card
+  // burned=false when player hits CLAIM NOW before revealing everything
+  function completeCard(burned) {
     if (isRevealed) return;
     isRevealed = true;
     scratchState.isRevealed = true;
@@ -1031,7 +1108,7 @@ function startScratch(tier, theme, isPackCard, packCardData) {
     const mech = THEMES[theme].mechanic;
     let displayType = card.winType;
 
-    if (mech === 'risk_reward' && pct > 88) {
+    if (mech === 'risk_reward' && burned) {
       finalWin = Math.floor(finalWin * 0.5);
       displayType = 'BURNED! -50%';
     }
@@ -1052,17 +1129,27 @@ function startScratch(tier, theme, isPackCard, packCardData) {
       wt.style.display = displayType ? 'block' : 'none';
       ov.classList.add('show');
       confetti({ particleCount:120, spread:70, origin:{y:.55} });
+      playSound('win');
     } else {
       document.getElementById('win-emoji').textContent = '😔';
       document.getElementById('win-text').textContent = 'TRY AGAIN';
       document.getElementById('win-amount').textContent = '';
       document.getElementById('win-type').style.display = 'none';
       ov.classList.add('show');
+      playSound('lose');
     }
 
     addCoins(finalWin, isPackCard ? packCardData.theme : theme);
     incrementScratched(isPackCard ? packCardData.theme : theme, isPackCard ? packCardData.tier : tier);
     document.getElementById('claim-btn-wrap').style.display = 'none';
+
+    // Win streak tracking
+    if (finalWin > 0) {
+      S.winStreak = (S.winStreak || 0) + 1;
+      showWinStreakBanner(S.winStreak);
+    } else {
+      S.winStreak = 0;
+    }
 
     saveState();
     renderAll();
@@ -1072,10 +1159,10 @@ function startScratch(tier, theme, isPackCard, packCardData) {
   }
 
   // Event listeners
-  function onMouseDown(e) { e.preventDefault(); isDrawing = true; const p=getCanvasPos(e); doScratch(p.x,p.y); }
+  function onMouseDown(e) { e.preventDefault(); isDrawing = true; playSound('scratch'); const p=getCanvasPos(e); doScratch(p.x,p.y); }
   function onMouseMove(e) { e.preventDefault(); if (!isDrawing) return; const p=getCanvasPos(e); doScratch(p.x,p.y); }
   function onMouseUp(e) { e.preventDefault(); isDrawing=false; lastX=null; lastY=null; }
-  function onTouchStart(e) { e.preventDefault(); isDrawing=true; const p=getCanvasPos(e); doScratch(p.x,p.y); }
+  function onTouchStart(e) { e.preventDefault(); isDrawing=true; playSound('scratch'); const p=getCanvasPos(e); doScratch(p.x,p.y); }
   function onTouchMove(e) { e.preventDefault(); if(!isDrawing) return; const p=getCanvasPos(e); doScratch(p.x,p.y); }
   function onTouchEnd(e) { e.preventDefault(); isDrawing=false; lastX=null; lastY=null; }
 
@@ -1088,11 +1175,9 @@ function startScratch(tier, theme, isPackCard, packCardData) {
   canvas.addEventListener('touchend', onTouchEnd, {passive:false});
   canvas.addEventListener('touchcancel', onTouchEnd, {passive:false});
 
-  // Claim now button (risk/reward) — pct based on revealed cells
+  // CLAIM NOW: player cashes out early — no burn penalty regardless of cells revealed
   document.getElementById('claim-now-btn').onclick = () => {
-    const revealedCount = cellRevealed.filter(Boolean).length;
-    const pct = (revealedCount / 9) * 100;
-    completeCard(pct);
+    completeCard(false);
   };
 
   // Cleanup on exit
@@ -1149,8 +1234,8 @@ function renderAll() {
   renderDaily();
   renderPacks();
   renderPrestige();
-  renderWork();
   renderResearch();
+  updateNavDots();
 }
 
 function renderHeader() {
@@ -1195,6 +1280,11 @@ function renderCardTab() {
       if (S.unlockedTiers.includes(t)) { S.tier = t; saveState(); renderCardTab(); }
       else {
         const td = TIERS[t];
+        if (S.coins < td.unlockCost) {
+          shakeEl(row);
+          shakeEl(document.getElementById('coin-display'));
+          return;
+        }
         showConfirm(`Unlock ${td.name}?`, `One-time unlock: ${td.unlockCost.toLocaleString()} coins.\nPlay cost: ${td.cost.toLocaleString()} per scratch.`, '🔓', () => {
           if (S.coins >= td.unlockCost) {
             S.coins = Math.floor(S.coins - td.unlockCost);
@@ -1213,7 +1303,6 @@ function renderCardTab() {
   const scratchBtn = document.getElementById('scratch-btn');
   scratchBtn.querySelector('span').textContent = td.cost.toLocaleString();
   scratchBtn.disabled = !canAfford;
-  document.getElementById('scavenge-btn').style.display = canAfford ? 'none' : 'flex';
 }
 
 function renderUpgrades() {
@@ -1237,7 +1326,13 @@ function renderUpgrades() {
       const u = UPGRADES.find(x=>x.id===id);
       const level = S.upgrades[id]||0;
       const cost = Math.floor(u.baseCost * Math.pow(u.mult, level));
-      if (spendCoins(cost)) { S.upgrades[id] = level+1; saveState(); renderAll(); }
+      if (spendCoins(cost)) {
+        S.upgrades[id] = level+1;
+        saveState();
+        renderAll();
+        // Restart auto-scratcher if that's what was upgraded (handles 0→1 activation)
+        if (id === 'autoScratcher') restartAutoScratcher();
+      }
     };
   });
 
@@ -1323,7 +1418,12 @@ function renderPacks() {
     </div>`;
   }).join('');
   list.querySelectorAll('[data-pack]').forEach(btn => {
-    btn.onclick = () => buyPack(btn.dataset.pack);
+    btn.onclick = () => {
+      const p = PACKS[btn.dataset.pack];
+      const canAfford = p.currency==='prestige' ? S.prestige>=p.cost : S.coins>=p.cost;
+      if (!canAfford) { shakeEl(btn); shakeEl(document.getElementById('coin-display')); return; }
+      buyPack(btn.dataset.pack);
+    };
   });
 
   const grid = document.getElementById('inventory-grid');
@@ -1358,13 +1458,6 @@ function renderPrestige() {
   btn.disabled = tickets < 1;
   btn.style.opacity = tickets >= 1 ? '1' : '.5';
   btn.style.cursor = tickets >= 1 ? 'pointer' : 'not-allowed';
-}
-
-function renderWork() {
-  const al = S.upgrades.autoScratcher;
-  document.getElementById('auto-level-work').textContent = al;
-  document.getElementById('auto-status').textContent = al > 0 ? `${al}/min` : 'Inactive';
-  document.getElementById('auto-status').style.color = al > 0 ? 'var(--emerald)' : 'var(--slate-400)';
 }
 
 function renderResearch() {
@@ -1461,8 +1554,44 @@ function activatePackCard(card) {
 //  ANIMATIONS
 // ═══════════════════════════════════════════════════════════════
 
+function shakeEl(el) {
+  if (!el) return;
+  el.classList.remove('shake');
+  void el.offsetWidth;
+  el.classList.add('shake');
+  setTimeout(() => el.classList.remove('shake'), 500);
+}
+
+function updateNavDots() {
+  // Missions dot: any claimable mission
+  const missionsDot = document.getElementById('nav-dot-missions');
+  if (missionsDot) {
+    const hasClaimable = S.missions.some(m => !m.completed && m.current >= m.target);
+    missionsDot.classList.toggle('show', hasClaimable);
+  }
+  // Daily dot: bonus available
+  const dailyDot = document.getElementById('nav-dot-daily');
+  if (dailyDot) {
+    const lastMid = new Date(S.dailyLogin.lastClaimed); lastMid.setHours(0,0,0,0);
+    const curMid = new Date(); curMid.setHours(0,0,0,0);
+    dailyDot.classList.toggle('show', curMid > lastMid);
+  }
+}
+
+let streakBannerTimer = null;
+function showWinStreakBanner(streak) {
+  const banner = document.getElementById('win-streak-banner');
+  if (!banner || streak < 2) return;
+  const labels = {2:'🔥 2 in a row!',3:'🔥🔥 3 streak!',4:'💥 4 streak!',5:'⚡ 5 streak!',6:'🌟 6 streak!',7:'🏆 7 streak!'};
+  banner.textContent = labels[streak] || `🏆 ${streak} streak!`;
+  banner.classList.add('show');
+  if (streakBannerTimer) clearTimeout(streakBannerTimer);
+  streakBannerTimer = setTimeout(() => banner.classList.remove('show'), 2200);
+}
+
 function animateCoins(amount) {
   if (amount <= 0) return;
+  if (amount >= 5) playSound('coin');
   const el = document.createElement('div');
   el.className = 'float-coin';
   el.innerHTML = `🪙 +${amount.toLocaleString()}`;
@@ -1605,15 +1734,18 @@ document.getElementById('scratch-btn').onclick = () => {
   startScratch(S.tier, S.theme, false, null);
 };
 
-// Scavenge btn
-document.getElementById('scavenge-btn').onclick = () => { addCoins(1); saveState(); renderAll(); };
-
 // Theme select
 document.getElementById('theme-select').onchange = e => {
   const t = e.target.value;
   if (S.unlockedThemes.includes(t)) { S.theme=t; saveState(); renderCardTab(); }
   else {
     const thd = THEMES[t];
+    if (S.coins < thd.unlockCost) {
+      shakeEl(document.getElementById('coin-display'));
+      shakeEl(document.getElementById('theme-select'));
+      e.target.value = S.theme;
+      return;
+    }
     showConfirm(`Unlock ${thd.name}?`, `One-time cost: ${thd.unlockCost.toLocaleString()} coins.`, '🎨', () => {
       if (S.coins >= thd.unlockCost) {
         S.coins = Math.floor(S.coins - thd.unlockCost);
@@ -1625,9 +1757,6 @@ document.getElementById('theme-select').onchange = e => {
     e.target.value = S.theme;
   }
 };
-
-// Work
-document.getElementById('work-btn').onclick = () => { addCoins(2); saveState(); renderHeader(); };
 
 // Daily
 document.getElementById('daily-btn').onclick = () => {
@@ -1647,11 +1776,17 @@ document.getElementById('prestige-btn').onclick = () => {
   const tickets = Math.floor(S.coins/10000);
   if (tickets < 1) return;
   showConfirm('Prestige?', `Earn ${tickets} Golden Ticket${tickets!==1?'s':''} and reset your progress? This cannot be undone.`, '🏆', () => {
-    const keep = { dailyLogin:S.dailyLogin, inventory:S.inventory };
-    S = DEFAULT_STATE();
-    S.prestige = keep.dailyLogin ? 0 : 0; // replaced below
-    S = { ...S, prestige:tickets, dailyLogin:keep.dailyLogin, inventory:keep.inventory, tutorialDone:true };
-    saveState(); renderAll(); restartAutoScratcher();
+    const flash = document.getElementById('prestige-flash');
+    flash.style.opacity = '1';
+    flash.style.pointerEvents = 'all';
+    playSound('prestige');
+    setTimeout(() => {
+      const keep = { dailyLogin:S.dailyLogin, inventory:S.inventory };
+      S = DEFAULT_STATE();
+      S = { ...S, prestige:tickets, dailyLogin:keep.dailyLogin, inventory:keep.inventory, tutorialDone:true };
+      saveState(); renderAll(); restartAutoScratcher();
+      setTimeout(() => { flash.style.opacity='0'; flash.style.pointerEvents='none'; }, 800);
+    }, 600);
   });
 };
 
